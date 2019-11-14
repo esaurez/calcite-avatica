@@ -31,6 +31,7 @@ plugins {
     publishing
     // Verification
     checkstyle
+    `maven-publish`
     id("org.nosphere.apache.rat")
     id("com.github.spotbugs")
     id("de.thetaphi.forbiddenapis") apply false
