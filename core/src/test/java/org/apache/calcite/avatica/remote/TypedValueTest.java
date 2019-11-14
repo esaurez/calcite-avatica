@@ -86,6 +86,9 @@ public class TypedValueTest {
   @Test public void testFloat() {
     serializeAndEqualityCheck(TypedValue.ofLocal(Rep.PRIMITIVE_FLOAT, 3.14159f));
     serializeAndEqualityCheck(TypedValue.ofLocal(Rep.FLOAT, Float.valueOf(3.14159f)));
+    Common.TypedValue.Builder builder = Common.TypedValue.newBuilder();
+    Common.Rep val = TypedValue.toProto(builder, Float.valueOf(3.14159f));
+    Common.TypedValue typedVal = builder.build();
   }
 
   @Test public void testDouble() {

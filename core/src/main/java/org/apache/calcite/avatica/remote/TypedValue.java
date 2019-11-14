@@ -802,7 +802,7 @@ public class TypedValue {
       writeToProtoWithType(builder, o, Common.Rep.DOUBLE);
       return Common.Rep.DOUBLE;
     } else if (o instanceof Float) {
-      writeToProtoWithType(builder, ((Float) o).longValue(), Common.Rep.FLOAT);
+      writeToProtoWithType(builder, (Float) o, Common.Rep.FLOAT);
       return Common.Rep.FLOAT;
     } else if (o instanceof BigDecimal) {
       writeToProtoWithType(builder, o, Common.Rep.BIG_DECIMAL);
