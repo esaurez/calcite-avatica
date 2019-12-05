@@ -272,9 +272,18 @@ public class JdbcMeta implements ProtobufMeta {
     }
     final List<AvaticaParameter> params = new ArrayList<>();
     for (int i = 1; i <= metaData.getParameterCount(); i++) {
+      int parameterType;
+      try {
+        parameterType = metaData.getParameterType(i);
+      }
+      catch(SQLException e){
+        // for lack of better option, using OTHER here
+        // MariaDB doesn't populate parameterType correctly
+        parameterType=Types.OTHER;
+      }
       params.add(
           new AvaticaParameter(metaData.isSigned(i), metaData.getPrecision(i),
-              metaData.getScale(i), metaData.getParameterType(i),
+              metaData.getScale(i), parameterType,
               metaData.getParameterTypeName(i),
               metaData.getParameterClassName(i), "?" + i));
     }
