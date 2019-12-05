@@ -717,8 +717,15 @@ public class JdbcMeta implements ProtobufMeta {
       // Set the maximum number of rows
       setMaxRows(statement, maxRowCount);
       getStatementCache().put(id, new StatementInfo(statement));
+      ParameterMetaData parameterMetaData;
+      try {
+       parameterMetaData=statement.getParameterMetaData();
+      }
+      catch(SQLException e){
+        parameterMetaData=null;
+      }
       StatementHandle h = new StatementHandle(ch.id, id,
-          signature(statement.getMetaData(), statement.getParameterMetaData(),
+          signature(statement.getMetaData(),parameterMetaData,
               sql, statementType));
       LOG.trace("prepared statement {}", h);
       return h;
