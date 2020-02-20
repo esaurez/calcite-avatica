@@ -102,8 +102,20 @@ public abstract class AbstractCursor implements Cursor {
       }
     }
     switch (columnMetaData.type.id) {
+    case Types.BIT:
+      switch(columnMetaData.type.rep) {
+        case PRIMITIVE_BOOLEAN:
+          return new BooleanAccessor(getter);
+	default:
+          throw new AssertionError("bad " + columnMetaData.type.rep);
+      }
     case Types.TINYINT:
-      return new ByteAccessor(getter);
+      switch(columnMetaData.type.rep) {
+        case PRIMITIVE_BOOLEAN:
+          return new BooleanAccessor(getter);
+	default:
+          return new ByteAccessor(getter);
+      }
     case Types.SMALLINT:
       return new ShortAccessor(getter);
     case Types.INTEGER:
@@ -227,8 +239,13 @@ public abstract class AbstractCursor implements Cursor {
         }
       }
       return new ObjectAccessor(getter);
+    case Types.NULL:
+      return new ObjectAccessor(getter);
     default:
-      throw new RuntimeException("unknown type " + columnMetaData.type.id);
+      java.io.StringWriter sw = new java.io.StringWriter();
+      new Throwable("").printStackTrace(new java.io.PrintWriter(sw));
+      String stackTrace = sw.toString();
+      throw new RuntimeException("Hello this is the problem unknown type " +Types.TINYINT+","+columnMetaData.columnName+" "+columnMetaData.type.id+" "+columnMetaData.type.name+" "+columnMetaData.type.rep+" "+stackTrace);
     }
   }
 
