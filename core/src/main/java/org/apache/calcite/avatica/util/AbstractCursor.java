@@ -1369,6 +1369,10 @@ public abstract class AbstractCursor implements Cursor {
       case Types.STRUCT:
       case Types.JAVA_OBJECT:
         return componentAccessor.getObject();
+      case Types.BLOB:
+        return componentAccessor.getBlob();
+      case Types.CLOB:
+        return componentAccessor.getClob();
       default:
         throw new IllegalStateException("Unhandled ARRAY component type: " + componentType.rep
             + ", id: " + componentType.id);
