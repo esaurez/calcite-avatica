@@ -155,7 +155,14 @@ public class AvaticaSite {
   public void setAsciiStream(InputStream x, long length) {
   }
 
-  public void setBinaryStream(InputStream x, long length) {
+  public void setBinaryStream(InputStream x, long length) throws SQLException {
+    byte[] newStream = null;
+    try {
+      newStream = readValues(x,length);
+    } catch (IOException e) {
+      throw new SQLException("Problems reading input stream", e);
+    }
+    wrap(ColumnMetaData.Rep.BYTE_STRING, newStream);
   }
 
   public void setCharacterStream(Reader reader, long length) {
@@ -164,7 +171,14 @@ public class AvaticaSite {
   public void setAsciiStream(InputStream x) {
   }
 
-  public void setBinaryStream(InputStream x) {
+  public void setBinaryStream(InputStream x) throws SQLException {
+    byte[] newStream = null;
+    try {
+      newStream = readValues(x);
+    } catch (IOException e) {
+      throw new SQLException("Problems reading input stream", e);
+    }
+    wrap(ColumnMetaData.Rep.BYTE_STRING, newStream);
   }
 
   public void setCharacterStream(Reader reader) {
