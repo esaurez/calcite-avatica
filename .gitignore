@@ -4,6 +4,8 @@
 settings.xml
 .classpath.txt
 .fullclasspath.txt
+*.ipr
+*.iws
 
 # eclipse
 .project
