@@ -19,10 +19,12 @@ package org.apache.calcite.avatica;
 import org.apache.calcite.avatica.remote.TypedValue;
 import org.apache.calcite.avatica.util.Cursor;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
@@ -40,9 +42,6 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Calendar;
-
-import javax.sql.rowset.serial.SerialBlob;
-import javax.sql.rowset.serial.SerialClob;
 
 /**
  * A location that a value can be written to or read from.
@@ -127,23 +126,23 @@ public class AvaticaSite {
   }
 
   public void setClob(Reader reader, long length) throws SQLException {
-    Clob newClob = null;
+    String newClob = null;
     try {
-      newClob = new SerialClob(readValues(reader, length));
+      newClob = readValues(reader, length);
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.CLOB, newClob);
+    wrap(ColumnMetaData.Rep.STRING, newClob);
   }
 
   public void setBlob(InputStream inputStream, long length) throws SQLException {
-    Blob newBlob = null;
+    byte[] newBlob = null;
     try {
-      newBlob = new SerialBlob(readValues(inputStream, length));
+      newBlob = readValues(inputStream, length);
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.BLOB, newBlob);
+    wrap(ColumnMetaData.Rep.BYTE_STRING, newBlob);
   }
 
   public void setNClob(Reader reader, long length) {
@@ -175,23 +174,23 @@ public class AvaticaSite {
   }
 
   public void setClob(Reader reader) throws SQLException {
-    Clob newClob = null;
+    String newClob = null;
     try {
-      newClob = new SerialClob(readValues(reader));
+      newClob = readValues(reader);
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.CLOB, newClob);
+    wrap(ColumnMetaData.Rep.STRING, newClob);
   }
 
   public void setBlob(InputStream inputStream) throws SQLException {
-    Blob newBlob = null;
+    byte[] newBlob = null;
     try {
-      newBlob = new SerialBlob(readValues(inputStream));
+      newBlob = readValues(inputStream);
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.BLOB, newBlob);
+    wrap(ColumnMetaData.Rep.BYTE_STRING, newBlob);
   }
 
   public void setNClob(Reader reader) {
@@ -239,7 +238,7 @@ public class AvaticaSite {
     }
     switch (targetSqlType) {
     case Types.CLOB:
-      setClob(toClob(x));
+      setClob(new StringReader(toClob(x)));
       break;
     case Types.DATALINK:
     case Types.NCLOB:
@@ -264,7 +263,7 @@ public class AvaticaSite {
       setBoolean(toBoolean(x));
       break;
     case Types.BLOB:
-      setBlob(toBlob(x));
+      setBlob(new ByteArrayInputStream(toBlob(x)));
       break;
     case Types.DATE:
       setDate(toDate(x), calendar);
@@ -423,12 +422,24 @@ public class AvaticaSite {
   public void setRef(Ref x) {
   }
 
-  public void setBlob(Blob x) {
-    slots[index] = wrap(ColumnMetaData.Rep.BLOB, x);
+  public void setBlob(Blob x) throws SQLException {
+    byte[] newBlob = null;
+    try {
+      newBlob = readValues(x.getBinaryStream());
+    } catch (IOException | SQLException e) {
+      throw new SQLException("Problems reading input stream", e);
+    }
+    slots[index] = wrap(ColumnMetaData.Rep.BYTE_STRING, newBlob);
   }
 
-  public void setClob(Clob x) {
-    slots[index] = wrap(ColumnMetaData.Rep.CLOB, x);
+  public void setClob(Clob x) throws SQLException {
+    String newClob;
+    try {
+      newClob = readValues(x.getCharacterStream());
+    } catch (SQLException | IOException e) {
+      throw new SQLException("Problems reading input stream", e);
+    }
+    slots[index] = wrap(ColumnMetaData.Rep.STRING, newClob);
   }
 
   public void setArray(Array x) {
@@ -599,13 +610,17 @@ public class AvaticaSite {
     }
   }
 
-  private static Blob toBlob(Object x) throws SQLException {
+  private static byte[] toBlob(Object x) throws SQLException {
     if (x instanceof Blob) {
-      return (Blob) x;
-    } else if (x instanceof InputStream) {
-      Blob newBlob = null;
       try {
-        newBlob = new SerialBlob(readValues((InputStream) x));
+        return readValues(((Blob) x).getBinaryStream());
+      } catch (IOException e) {
+        throw new SQLException("Problem when accessing InputStream and converting to Blob", e);
+      }
+    } else if (x instanceof InputStream) {
+      byte[] newBlob = null;
+      try {
+        newBlob = readValues((InputStream) x);
       } catch (IOException e) {
         throw new SQLException("Problem when accessing InputStream and converting to Blob", e);
       }
@@ -614,13 +629,17 @@ public class AvaticaSite {
     throw unsupportedCast(x.getClass(), Blob.class);
   }
 
-  private static Clob toClob(Object x) throws SQLException {
+  private static String toClob(Object x) throws SQLException {
     if (x instanceof Clob) {
-      return (Clob) x;
-    } else if (x instanceof Reader) {
-      Clob newClob = null;
       try {
-        newClob = new SerialClob(readValues((Reader) x));
+        return readValues(((Clob) x).getCharacterStream());
+      } catch (IOException e) {
+        throw new SQLException("Problem when accessing reader and converting to Clob", e);
+      }
+    } else if (x instanceof Reader) {
+      String newClob = null;
+      try {
+        newClob = readValues((Reader) x);
       } catch (IOException e) {
         throw new SQLException("Problem when accessing reader and converting to Clob", e);
       }
@@ -658,7 +677,7 @@ public class AvaticaSite {
     return buffer.toByteArray();
   }
 
-  private static char[] readValues(Reader r) throws IOException {
+  private static String readValues(Reader r) throws IOException {
     StringBuilder builder = new StringBuilder();
     char[] buffer = new char[8 * 1024];
     int chars;
@@ -666,10 +685,10 @@ public class AvaticaSite {
       builder.append(buffer, 0, chars);
     }
     r.close();
-    return buffer.toString().toCharArray();
+    return buffer.toString();
   }
 
-  private static char[] readValues(Reader r, long length) throws IOException {
+  private static String readValues(Reader r, long length) throws IOException {
     long remaining = length;
     StringBuilder builder = new StringBuilder();
     final int bufSize = 8 * 1024;
@@ -684,7 +703,7 @@ public class AvaticaSite {
       remaining -= chars;
     }
     r.close();
-    return buffer.toString().toCharArray();
+    return buffer.toString();
   }
 
   private static String toString(Object x) {
