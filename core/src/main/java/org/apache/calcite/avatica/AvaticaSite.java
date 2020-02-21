@@ -19,6 +19,8 @@ package org.apache.calcite.avatica;
 import org.apache.calcite.avatica.remote.TypedValue;
 import org.apache.calcite.avatica.util.Cursor;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
@@ -38,6 +40,9 @@ import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Calendar;
+
+import javax.sql.rowset.serial.SerialBlob;
+import javax.sql.rowset.serial.SerialClob;
 
 /**
  * A location that a value can be written to or read from.
@@ -121,10 +126,24 @@ public class AvaticaSite {
     slots[index] = wrap(ColumnMetaData.Rep.OBJECT, value);
   }
 
-  public void setClob(Reader reader, long length) {
+  public void setClob(Reader reader, long length) throws SQLException {
+    Clob newClob = null;
+    try {
+      newClob = new SerialClob(readValues(reader, length));
+    } catch (IOException e) {
+      throw new SQLException("Problems reading input stream", e);
+    }
+    wrap(ColumnMetaData.Rep.CLOB, newClob);
   }
 
-  public void setBlob(InputStream inputStream, long length) {
+  public void setBlob(InputStream inputStream, long length) throws SQLException {
+    Blob newBlob = null;
+    try {
+      newBlob = new SerialBlob(readValues(inputStream, length));
+    } catch (IOException e) {
+      throw new SQLException("Problems reading input stream", e);
+    }
+    wrap(ColumnMetaData.Rep.BLOB, newBlob);
   }
 
   public void setNClob(Reader reader, long length) {
@@ -155,10 +174,24 @@ public class AvaticaSite {
   public void setNCharacterStream(Reader value) {
   }
 
-  public void setClob(Reader reader) {
+  public void setClob(Reader reader) throws SQLException {
+    Clob newClob = null;
+    try {
+      newClob = new SerialClob(readValues(reader));
+    } catch (IOException e) {
+      throw new SQLException("Problems reading input stream", e);
+    }
+    wrap(ColumnMetaData.Rep.CLOB, newClob);
   }
 
-  public void setBlob(InputStream inputStream) {
+  public void setBlob(InputStream inputStream) throws SQLException {
+    Blob newBlob = null;
+    try {
+      newBlob = new SerialBlob(readValues(inputStream));
+    } catch (IOException e) {
+      throw new SQLException("Problems reading input stream", e);
+    }
+    wrap(ColumnMetaData.Rep.BLOB, newBlob);
   }
 
   public void setNClob(Reader reader) {
@@ -199,13 +232,15 @@ public class AvaticaSite {
     slots[index] = wrap(ColumnMetaData.Rep.JAVA_SQL_DATE, x, calendar);
   }
 
-  public void setObject(Object x, int targetSqlType) {
+  public void setObject(Object x, int targetSqlType) throws SQLException {
     if (x == null || Types.NULL == targetSqlType) {
       setNull(targetSqlType);
       return;
     }
     switch (targetSqlType) {
     case Types.CLOB:
+      setClob(toClob(x));
+      break;
     case Types.DATALINK:
     case Types.NCLOB:
     case Types.OTHER:
@@ -229,13 +264,8 @@ public class AvaticaSite {
       setBoolean(toBoolean(x));
       break;
     case Types.BLOB:
-      if (x instanceof Blob) {
-        setBlob((Blob) x);
-        break;
-      } else if (x instanceof InputStream) {
-        setBlob((InputStream) x);
-      }
-      throw unsupportedCast(x.getClass(), Blob.class);
+      setBlob(toBlob(x));
+      break;
     case Types.DATE:
       setDate(toDate(x), calendar);
       break;
@@ -294,6 +324,7 @@ public class AvaticaSite {
       Calendar localCalendar) throws SQLException {
     switch (targetSqlType) {
     case Types.CLOB:
+      return accessor.getClob();
     case Types.DATALINK:
     case Types.NCLOB:
     case Types.REF:
@@ -393,9 +424,11 @@ public class AvaticaSite {
   }
 
   public void setBlob(Blob x) {
+    slots[index] = wrap(ColumnMetaData.Rep.BLOB, x);
   }
 
   public void setClob(Clob x) {
+    slots[index] = wrap(ColumnMetaData.Rep.CLOB, x);
   }
 
   public void setArray(Array x) {
@@ -564,6 +597,94 @@ public class AvaticaSite {
     } else {
       throw unsupportedCast(x.getClass(), Short.TYPE);
     }
+  }
+
+  private static Blob toBlob(Object x) throws SQLException {
+    if (x instanceof Blob) {
+      return (Blob) x;
+    } else if (x instanceof InputStream) {
+      Blob newBlob = null;
+      try {
+        newBlob = new SerialBlob(readValues((InputStream) x));
+      } catch (IOException e) {
+        throw new SQLException("Problem when accessing InputStream and converting to Blob", e);
+      }
+      return newBlob;
+    }
+    throw unsupportedCast(x.getClass(), Blob.class);
+  }
+
+  private static Clob toClob(Object x) throws SQLException {
+    if (x instanceof Clob) {
+      return (Clob) x;
+    } else if (x instanceof Reader) {
+      Clob newClob = null;
+      try {
+        newClob = new SerialClob(readValues((Reader) x));
+      } catch (IOException e) {
+        throw new SQLException("Problem when accessing reader and converting to Clob", e);
+      }
+      return newClob;
+    }
+    throw unsupportedCast(x.getClass(), Clob.class);
+  }
+
+  private static byte[] readValues(InputStream s) throws IOException {
+    int bytes;
+    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    byte[] rawdata = new byte[8 * 1024];
+    while ((bytes = s.read(rawdata, 0, rawdata.length)) != -1) {
+      buffer.write(rawdata, 0, bytes);
+    }
+    buffer.flush();
+    return buffer.toByteArray();
+  }
+
+  private static byte[] readValues(InputStream s, long length) throws IOException {
+    long remaining = length;
+    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    final int bufSize = 8 * 1024;
+    byte[] rawdata = new byte[bufSize];
+    while (remaining > 0) {
+      int toRead = (remaining > bufSize) ? bufSize : (int) remaining;
+      final int readVals = s.read(rawdata, 0, toRead);
+      if (readVals != toRead) {
+        throw new IOException("Invalid number of results read " + readVals);
+      }
+      buffer.write(rawdata, 0, readVals);
+      remaining -= readVals;
+    }
+    buffer.flush();
+    return buffer.toByteArray();
+  }
+
+  private static char[] readValues(Reader r) throws IOException {
+    StringBuilder builder = new StringBuilder();
+    char[] buffer = new char[8 * 1024];
+    int chars;
+    while ((chars = r.read(buffer, 0, buffer.length)) != -1) {
+      builder.append(buffer, 0, chars);
+    }
+    r.close();
+    return buffer.toString().toCharArray();
+  }
+
+  private static char[] readValues(Reader r, long length) throws IOException {
+    long remaining = length;
+    StringBuilder builder = new StringBuilder();
+    final int bufSize = 8 * 1024;
+    char[] buffer = new char[bufSize];
+    while (remaining > 0) {
+      int toRead = (remaining > bufSize) ? bufSize : (int) remaining;
+      final int chars = r.read(buffer, 0, toRead);
+      if (chars != toRead) {
+        throw new IOException("Invalid number of characters read " + chars);
+      }
+      builder.append(buffer, 0, chars);
+      remaining -= chars;
+    }
+    r.close();
+    return buffer.toString().toCharArray();
   }
 
   private static String toString(Object x) {

@@ -41,6 +41,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import javax.sql.rowset.serial.SerialBlob;
+import javax.sql.rowset.serial.SerialClob;
+
 /**
  * Metadata for a column.
  *
@@ -339,6 +342,8 @@ public class ColumnMetaData {
     BYTE_STRING(ByteString.class, Types.VARBINARY),
     STRING(String.class, Types.VARCHAR),
 
+    BLOB(SerialBlob.class, Types.BLOB),
+    CLOB(SerialClob.class, Types.CLOB),
     /** Values are represented as some sub-class of {@link Number}.
      * The JSON encoding does this. */
     NUMBER(Number.class, Types.NUMERIC),
@@ -348,6 +353,7 @@ public class ColumnMetaData {
     STRUCT(Struct.class, Types.JAVA_OBJECT),
 
     OBJECT(Object.class, Types.JAVA_OBJECT);
+
 
     public final Class clazz;
     public final int typeId;
@@ -422,6 +428,10 @@ public class ColumnMetaData {
         return resultSet.getArray(i);
       case STRUCT:
         return resultSet.getObject(i, Struct.class);
+      case BLOB:
+        return resultSet.getBlob(i);
+      case CLOB:
+        return resultSet.getClob(i);
       default:
         return resultSet.getObject(i);
       }

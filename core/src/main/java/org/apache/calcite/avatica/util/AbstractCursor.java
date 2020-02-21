@@ -45,6 +45,10 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
+import javax.sql.rowset.serial.SerialBlob;
+import javax.sql.rowset.serial.SerialClob;
+
+
 /**
  * Base class for implementing a cursor.
  *
@@ -241,6 +245,10 @@ public abstract class AbstractCursor implements Cursor {
       return new ObjectAccessor(getter);
     case Types.NULL:
       return new ObjectAccessor(getter);
+    case Types.BLOB:
+      return new BlobAccessor(getter);
+    case Types.CLOB:
+      return new ClobAccessor(getter);
     default:
       java.io.StringWriter sw = new java.io.StringWriter();
       new Throwable("").printStackTrace(new java.io.PrintWriter(sw));
@@ -858,7 +866,7 @@ public abstract class AbstractCursor implements Cursor {
       if (o instanceof byte[]) {
         return new String((byte[]) o, StandardCharsets.UTF_8);
       } else if (o instanceof ByteString) {
-        return ((ByteString) o).toString();
+        return o.toString();
       }
       throw new IllegalStateException("Unhandled value type: " + o.getClass());
     }
@@ -1495,6 +1503,56 @@ public abstract class AbstractCursor implements Cursor {
 
     public boolean wasNull() throws SQLException {
       return getObject() == null;
+    }
+  }
+
+  /**
+   * Accessor that assumes that the underlying value is an array of
+   * {@link org.apache.calcite.avatica.util.ByteString} values;
+   * corresponds to {@link java.sql.Types#BLOB}
+   */
+  private static class BlobAccessor extends AccessorImpl {
+    private BlobAccessor(Getter getter) {
+      super(getter);
+    }
+
+    //FIXME: Protobuf gets byte[]
+    @Override public Blob getBlob() throws SQLException {
+      Object obj = getObject();
+      if (null == obj) {
+        return null;
+      }
+      if (obj instanceof ByteString) {
+        return new SerialBlob(((ByteString) obj).getBytes());
+      } else if (obj instanceof String) {
+        //Need to unwind the base64 for JSON (This needs to checked!!! )
+        return new SerialBlob(ByteString.parseBase64((String) obj));
+      } else if (obj instanceof byte[]) {
+        // Protobuf would have a byte array
+        return new SerialBlob((byte[]) obj);
+      } else {
+        throw new RuntimeException("Cannot handle " + obj.getClass() + " as Blob");
+      }
+    }
+  }
+
+  /**
+   * Accessor that assumes that the underlying value is a {@link String};
+   * corresponds to {@link java.sql.Types#CLOB}
+   */
+  private static class ClobAccessor extends AccessorImpl {
+    private ClobAccessor(Getter getter) {
+      super(getter);
+    }
+
+    public Clob getClob() throws SQLException {
+      final Object obj = getObject();
+      if (obj instanceof String) {
+        return new SerialClob(((String) obj).toCharArray());
+      } else if (obj == null) {
+        return null;
+      }
+      throw new RuntimeException("Cannot handle " + obj.getClass() + " as Clob");
     }
   }
 }
