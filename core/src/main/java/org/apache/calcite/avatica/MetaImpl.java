@@ -33,6 +33,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.Time;
@@ -1503,6 +1505,8 @@ public abstract class MetaImpl implements Meta {
       put(java.sql.Date.class, Types.DATE, "DATE");
       put(Time.class, Types.TIME, "TIME");
       put(Timestamp.class, Types.TIMESTAMP, "TIMESTAMP");
+      put(Blob.class, Types.BLOB, "BLOB");
+      put(Clob.class, Types.CLOB, "CLOB");
     }
 
     private final int sqlType;
