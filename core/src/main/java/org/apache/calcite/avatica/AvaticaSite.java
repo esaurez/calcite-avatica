@@ -699,7 +699,7 @@ public class AvaticaSite {
       builder.append(buffer, 0, chars);
     }
     r.close();
-    return buffer.toString();
+    return builder.toString();
   }
 
   private static String readValues(Reader r, long length) throws IOException {
@@ -717,7 +717,7 @@ public class AvaticaSite {
       remaining -= chars;
     }
     r.close();
-    return buffer.toString();
+    return builder.toString();
   }
 
   private static String toString(Object x) {
