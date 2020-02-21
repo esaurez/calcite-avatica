@@ -132,7 +132,7 @@ public class AvaticaSite {
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.STRING, newClob);
+    slots[index] = wrap(ColumnMetaData.Rep.STRING, newClob);
   }
 
   public void setBlob(InputStream inputStream, long length) throws SQLException {
@@ -142,7 +142,7 @@ public class AvaticaSite {
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.BYTE_STRING, newBlob);
+    slots[index] = wrap(ColumnMetaData.Rep.BYTE_STRING, newBlob);
   }
 
   public void setNClob(Reader reader, long length) {
@@ -162,7 +162,7 @@ public class AvaticaSite {
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.BYTE_STRING, newStream);
+    slots[index] = wrap(ColumnMetaData.Rep.BYTE_STRING, newStream);
   }
 
   public void setCharacterStream(Reader reader, long length) {
@@ -178,7 +178,7 @@ public class AvaticaSite {
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.BYTE_STRING, newStream);
+    slots[index] = wrap(ColumnMetaData.Rep.BYTE_STRING, newStream);
   }
 
   public void setCharacterStream(Reader reader) {
@@ -194,7 +194,7 @@ public class AvaticaSite {
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.STRING, newClob);
+    slots[index] = wrap(ColumnMetaData.Rep.STRING, newClob);
   }
 
   public void setBlob(InputStream inputStream) throws SQLException {
@@ -204,7 +204,7 @@ public class AvaticaSite {
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }
-    wrap(ColumnMetaData.Rep.BYTE_STRING, newBlob);
+    slots[index] = wrap(ColumnMetaData.Rep.BYTE_STRING, newBlob);
   }
 
   public void setNClob(Reader reader) {
