@@ -275,11 +275,10 @@ public class JdbcMeta implements ProtobufMeta {
       int parameterType;
       try {
         parameterType = metaData.getParameterType(i);
-      }
-      catch(SQLException e){
+      } catch (SQLException e) {
         // for lack of better option, using OTHER here
         // MariaDB doesn't populate parameterType correctly
-        parameterType=Types.OTHER;
+        parameterType = Types.OTHER;
       }
       params.add(
           new AvaticaParameter(metaData.isSigned(i), metaData.getPrecision(i),
@@ -728,13 +727,12 @@ public class JdbcMeta implements ProtobufMeta {
       getStatementCache().put(id, new StatementInfo(statement));
       ParameterMetaData parameterMetaData;
       try {
-       parameterMetaData=statement.getParameterMetaData();
-      }
-      catch(SQLException e){
-        parameterMetaData=null;
+        parameterMetaData = statement.getParameterMetaData();
+      } catch (SQLException e) {
+        parameterMetaData = null;
       }
       StatementHandle h = new StatementHandle(ch.id, id,
-          signature(statement.getMetaData(),parameterMetaData,
+          signature(statement.getMetaData(), parameterMetaData,
               sql, statementType));
       LOG.trace("prepared statement {}", h);
       return h;
