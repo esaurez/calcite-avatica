@@ -1214,7 +1214,7 @@ public class AvaticaResultSetConversionsTest {
   }
 
   /** Retrieves the value of a column in a result set, addressing by column
-   * label. */
+   * id. */
   static class OrdinalGetter implements Getter {
     final int ordinal;
 
