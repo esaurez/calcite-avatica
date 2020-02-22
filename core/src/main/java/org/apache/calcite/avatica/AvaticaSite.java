@@ -158,7 +158,7 @@ public class AvaticaSite {
   public void setBinaryStream(InputStream x, long length) throws SQLException {
     byte[] newStream = null;
     try {
-      newStream = readValues(x,length);
+      newStream = readValues(x, length);
     } catch (IOException e) {
       throw new SQLException("Problems reading input stream", e);
     }

@@ -20,6 +20,7 @@ import org.apache.calcite.avatica.AvaticaSite;
 import org.apache.calcite.avatica.AvaticaUtils;
 import org.apache.calcite.avatica.ColumnMetaData;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.lang.reflect.Field;
@@ -245,8 +246,10 @@ public abstract class AbstractCursor implements Cursor {
       return new ObjectAccessor(getter);
     case Types.NULL:
       return new ObjectAccessor(getter);
+    case Types.LONGVARBINARY:
     case Types.BLOB:
       return new BlobAccessor(getter);
+    case Types.LONGVARCHAR:
     case Types.CLOB:
       return new ClobAccessor(getter);
     default:
@@ -1538,6 +1541,41 @@ public abstract class AbstractCursor implements Cursor {
         throw new RuntimeException("Cannot handle " + obj.getClass() + " as Blob");
       }
     }
+
+    @Override public byte[] getBytes() throws SQLException {
+      Object obj = getObject();
+      if (null == obj) {
+        return null;
+      }
+      if (obj instanceof ByteString) {
+        return ((ByteString) obj).getBytes();
+      } else if (obj instanceof String) {
+        //Need to unwind the base64 for JSON (This needs to checked!!! )
+        return ByteString.parseBase64((String) obj);
+      } else if (obj instanceof byte[]) {
+        return (byte[]) obj;
+      } else {
+        throw new RuntimeException("Cannot handle " + obj.getClass() + " as Byte String");
+      }
+    }
+
+    public InputStream getBinaryStream() throws SQLException {
+      Object obj = getObject();
+      if (null == obj) {
+        return null;
+      }
+      if (obj instanceof ByteString) {
+        return new ByteArrayInputStream(((ByteString) obj).getBytes());
+      } else if (obj instanceof String) {
+        //Need to unwind the base64 for JSON (This needs to checked!!! )
+        return new ByteArrayInputStream(ByteString.parseBase64((String) obj));
+      } else if (obj instanceof byte[]) {
+        return new ByteArrayInputStream((byte[]) obj);
+      } else {
+        throw new RuntimeException("Cannot handle " + obj.getClass() + " as Binary Stream");
+      }
+    }
+
   }
 
   /**
@@ -1557,6 +1595,28 @@ public abstract class AbstractCursor implements Cursor {
         return null;
       }
       throw new RuntimeException("Cannot handle " + obj.getClass() + " as Clob");
+    }
+
+    public InputStream getAsciiStream() throws SQLException {
+      final Object obj = getObject();
+      if (obj instanceof String) {
+        Clob newClob = new SerialClob(((String) obj).toCharArray());
+        return newClob.getAsciiStream();
+      } else if (obj == null) {
+        return null;
+      }
+      throw new RuntimeException("Cannot handle " + obj.getClass() + " as Ascii Stream");
+    }
+
+    public Reader getCharacterStream() throws SQLException {
+      final Object obj = getObject();
+      if (obj instanceof String) {
+        Clob newClob = new SerialClob(((String) obj).toCharArray());
+        return newClob.getCharacterStream();
+      } else if (obj == null) {
+        return null;
+      }
+      throw new RuntimeException("Cannot handle " + obj.getClass() + " as Character Stream");
     }
   }
 }
